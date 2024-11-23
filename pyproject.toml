@@ -7,9 +7,7 @@ name = "git2md"
 version = "1.1.0"
 description = "Convert Git repository contents to Markdown format"
 readme = "README.md"
-authors = [
-    { name = "Michael", email = "x30827pos@gmail.com" }
-]
+authors = ["Michael <x30827pos@gmail.com>"]
 license = "MIT"
 classifiers = [
     "Development Status :: 5 - Production/Stable",
