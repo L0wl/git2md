@@ -100,7 +100,7 @@ jobs:
 
   pypi_publish:
     name: Upload release to PyPI
-    needs: [setup_and_build]
+    needs: [setup_and_build, check_pypi]
     runs-on: ubuntu-latest
     environment:
       name: release
