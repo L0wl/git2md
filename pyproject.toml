@@ -25,11 +25,11 @@ classifiers = [
     "Topic :: Software Development :: Version Control :: Git",
     "Topic :: Text Processing :: Markup :: Markdown"
 ]
-dependencies = [
-    { name = "pathspec", version = "^0.12.1" },
-    { name = "nbconvert", version = "^7.16.4" },
-    { name = "pymupdf4llm", version = "^0.0.17" }
-]
+[tool.poetry.dependencies]
+python = ">=3.12"
+pathspec = "^0.12.1"
+nbconvert = "^7.16.4"
+pymupdf4llm = "^0.0.17"
 
 [tool.poetry.scripts]
 git2md = "src.git2md:main"
