@@ -32,6 +32,16 @@ A command-line tool for converting Git repository contents to Markdown format. T
 
 ## Installation
 
+### Install from PyPI
+
+You can install `git2md` directly from PyPI using pip:
+
+```bash
+pip install git2md
+```
+
+### Install from source
+
 1. Clone the repository:
 
    ```bash
@@ -121,7 +131,7 @@ Each file is included with its relative path as a header, followed by its conten
 
 #### Example for a Python File (`main.py`)
 
-```markdown
+````markdown
 # File: src/main.py
 
 ```python
@@ -129,31 +139,31 @@ print("Hello, world!")
 ```
 
 # End of file: src/main.py
-```
+````
 
 #### Example for a Jupyter Notebook (`notebook.ipynb`)
 
 The content is converted from `.ipynb` to Markdown and included directly:
 
-```markdown
+````markdown
 # File: notebook.ipynb
 
 # Converted content from Jupyter Notebook...
 
 # End of file: notebook.ipynb
-```
+````
 
 #### Example for a PDF (`document.pdf`)
 
 The content is extracted as Markdown:
 
-```markdown
+````markdown
 # File: document.pdf
 
 # Extracted content from PDF...
 
 # End of file: document.pdf
-```
+````
 
 ---
 
