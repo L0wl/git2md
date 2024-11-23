@@ -1,141 +1,227 @@
 # git2md
 
-A command-line tool for converting Git repository contents to Markdown format. This tool helps you create documentation by generating a Markdown file containing the repository structure and the contents of all files.
+A command-line tool for converting Git repository contents to Markdown format. This tool generates a Markdown file containing the repository's directory tree and the contents of its files. It supports various file types, including Python scripts, Markdown files, Jupyter Notebooks, and PDFs.
+
+---
 
 ## Features
 
-- Generate repository file structure tree
-- Convert files to Markdown with proper syntax highlighting
-- Support for .gitignore patterns
-- Custom file/directory ignore patterns
-- Include specific files/directories only
-- Copy output to clipboard (requires wl-copy)
-- Skip empty files
-- Supports custom global ignore patterns via .globalignore
+- **Generate repository directory tree**: Outputs the structure of the repository in a `tree` block format.
+- **Convert files to Markdown**:
+  - Supports syntax highlighting for code files.
+  - Converts Jupyter Notebooks (`.ipynb`) and PDFs (`.pdf`) into Markdown.
+- **Support for `.gitignore` and `.globalignore`**:
+  - Automatically excludes files/directories listed in `.gitignore` or `.globalignore`.
+- **Custom exclusion patterns**: Use regular expressions to exclude specific files or directories.
+- **Skip empty files**: Avoids processing files with no content.
+- **Copy output to clipboard**: Easily copy the generated Markdown output for further use.
+
+---
 
 ## Requirements
 
-- Python 3.12 or higher
-- Linux operating system
-- wl-copy (for clipboard functionality)
-- pathspec>=0.12.1 (for .gitignore support)
+- **Python 3.12 or higher**
+- **Linux operating system**
+- **Dependencies**:
+  - `pathspec` (for `.gitignore` support)
+  - `nbconvert` (for Jupyter Notebook conversion)
+  - `PyMuPDF4LLM` (for PDF conversion)
+  - `wl-copy` (optional, for clipboard functionality)
+
+---
 
 ## Installation
 
 1. Clone the repository:
-```bash
-git clone https://github.com/xpos587/git2md.git
-cd git2md
-```
+
+   ```bash
+   git clone https://github.com/xpos587/git2md.git
+   cd git2md
+   ```
 
 2. Run the installation script:
-```bash
-python install.py
-```
 
-The script will:
-- Install the package in your Python environment
-- Create a symlink in /usr/local/bin for global access (requires sudo)
+   ```bash
+   python install.py
+   ```
+
+   The script will:
+   - Install the package in your Python environment.
+   - Create a symlink in `/usr/local/bin` for global access (requires `sudo`).
+
+---
 
 ## Usage
 
-Basic usage:
+### Basic Command
+
 ```bash
 git2md <path> [options]
 ```
 
-Options:
-```
-positional arguments:
-  path                  Path to the git project directory.
+### Options
 
-optional arguments:
-  -h, --help              Show this help message and exit
-  -o, --output            Output file path
-  -exc, --exclude         List of files/directories to ignore (glob patterns)
-  -inc, --include         List of files/directories to include (glob patterns)
-  -se, --skip-empty       Skip empty files
-  -cp, --clipboard        Copy output to clipboard
-  -igi, --ignoregitignore Ignore .gitignore and .globalignore files
-```
+| Option                  | Description                                                                 |
+|-------------------------|-----------------------------------------------------------------------------|
+| `path`                  | Path to the Git project directory or file to process.                      |
+| `-o`, `--output`        | Output file path for saving the generated Markdown.                        |
+| `-rex`, `--regex-exclude` | List of regular expressions to exclude specific files or directories.      |
+| `-se`, `--skip-empty-files` | Skip empty files during processing.                                      |
+| `-cp`, `--clipboard`    | Copy the output content to clipboard (requires `wl-copy`).                 |
+| `-igi`, `--ignore-gitignore` | Ignore `.gitignore` and `.globalignore` rules.                         |
+
+---
 
 ## Examples
 
-1. Generate markdown for entire repository:
+### Generate Markdown for an entire repository
+
 ```bash
 git2md /path/to/repo -o output.md
 ```
 
-2. Include only specific files/directories:
+### Exclude specific files/directories using regex
+
 ```bash
-git2md /path/to/repo -inc "src/*.py" "docs/*" -o output.md
+git2md /path/to/repo -rex ".*\.log$" ".*\.tmp$" -o output.md
 ```
 
-3. Ignore specific patterns:
+### Skip empty files and copy output to clipboard
+
 ```bash
-git2md /path/to/repo -exc "*.pyc" "__pycache__" -o output.md
+git2md /path/to/repo -se -cp
 ```
 
-4. Copy output to clipboard:
+### Ignore `.gitignore` rules
+
 ```bash
-git2md /path/to/repo -cp
+git2md /path/to/repo -igi -o output.md
 ```
 
-5. Ignore .gitignore rules:
-```bash
-git2md -igi -o output.md /path/to/repo
+---
+
+## Output Format
+
+### Directory Tree
+
+The directory tree is included as a code block with the language identifier `tree`. For example:
+
+```tree
+src/
+├── main.py
+├── utils/
+│   ├── helper.py
+│   └── __init__.py
+└── README.md
 ```
+
+### File Contents
+
+Each file is included with its relative path as a header, followed by its content in a code block.
+
+#### Example for a Python File (`main.py`)
+
+```markdown
+# File: src/main.py
+
+```python
+print("Hello, world!")
+```
+
+# End of file: src/main.py
+```
+
+#### Example for a Jupyter Notebook (`notebook.ipynb`)
+
+The content is converted from `.ipynb` to Markdown and included directly:
+
+```markdown
+# File: notebook.ipynb
+
+# Converted content from Jupyter Notebook...
+
+# End of file: notebook.ipynb
+```
+
+#### Example for a PDF (`document.pdf`)
+
+The content is extracted as Markdown:
+
+```markdown
+# File: document.pdf
+
+# Extracted content from PDF...
+
+# End of file: document.pdf
+```
+
+---
 
 ## Global Ignore Patterns
 
-You can create a `.globalignore` file in the same directory as the script to specify patterns that should be ignored across all repositories. The format is the same as `.gitignore`.
+You can create a `.globalignore` file in the same directory as the script to specify patterns that should be ignored across all repositories. The format is identical to `.gitignore`.
 
-Example `.globalignore`:
-```
+#### Example `.globalignore`
+
+```plaintext
 __pycache__/
 *.pyc
-.git/
+.mypy_cache/
 .env
-.venv
+*.log
 ```
+
+---
 
 ## Development
 
 To set up the development environment:
 
 1. Create a virtual environment:
-```bash
-python -m venv .venv
-source .venv/bin/activate
-```
+
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate
+   ```
 
 2. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
+
+   ```bash
+   pip install pathspec nbconvert pymupdf4llm
+   ```
 
 3. Install in editable mode:
-```bash
-pip install -e .
-```
+
+   ```bash
+   pip install -e .
+   ```
+
+---
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
 
 ## Contributing
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+1. Fork the repository.
+2. Create your feature branch (`git checkout -b feature/amazing-feature`).
+3. Commit your changes (`git commit -m 'Add some amazing feature'`).
+4. Push to the branch (`git push origin feature/amazing-feature`).
+5. Open a Pull Request.
+
+---
 
 ## Authors
 
-- Michael (x30827pos@gmail.com)
+Michael (<x30827pos@gmail.com>)
+
+---
 
 ## Acknowledgments
 
-- Thanks to the pathspec library for .gitignore support
-- Inspired by the need to easily document Git repositories for LLM
+Thanks to the developers of the `pathspec`, `nbconvert`, and `PyMuPDF4LLM` libraries.
+
+Inspired by the need to easily document Git repositories for LLM-based workflows.
