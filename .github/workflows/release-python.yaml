@@ -66,7 +66,7 @@ jobs:
           fi
 
   setup_and_build:
-    needs: [details, check_pypi]
+    needs: details
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -100,7 +100,7 @@ jobs:
 
   pypi_publish:
     name: Upload release to PyPI
-    needs: [setup_and_build, details]
+    needs: [setup_and_build]
     runs-on: ubuntu-latest
     environment:
       name: release
@@ -118,7 +118,7 @@ jobs:
 
   github_release:
     name: Create GitHub Release
-    needs: [setup_and_build, details]
+    needs: [setup_and_build]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -146,14 +146,19 @@ jobs:
     needs: [setup_and_build, details]
     runs-on: ubuntu-latest
 
+    container:
+      image: archlinux/archlinux:latest
+
     steps:
       - uses: actions/checkout@v2
 
       - name: Install dependencies for AUR publishing
-        run: sudo pacman -Sy --noconfirm base-devel git
+        run: |
+          pacman -Sy --noconfirm base-devel git
 
       - name: Generate .SRCINFO file for AUR package
-        run: makepkg --printsrcinfo > .SRCINFO
+        run: |
+          makepkg --printsrcinfo > .SRCINFO
 
       - name: Publish package to AUR
         uses: KSXGitHub/github-actions-deploy-aur@v2.6.0
