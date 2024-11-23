@@ -1,8 +1,8 @@
 [build-system]
-requires = ["setuptools>=42", "wheel", "build"]
-build-backend = "setuptools.build_meta"
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
 
-[project]
+[tool.poetry]
 name = "git2md"
 version = "1.1.0"
 description = "Convert Git repository contents to Markdown format"
@@ -10,7 +10,7 @@ readme = "README.md"
 authors = [
     { name = "Michael", email = "x30827pos@gmail.com" }
 ]
-license = { file = "LICENSE" }
+license = "MIT"
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Environment :: Console",
@@ -25,39 +25,12 @@ classifiers = [
     "Topic :: Software Development :: Version Control :: Git",
     "Topic :: Text Processing :: Markup :: Markdown"
 ]
-requires-python = ">=3.12"
 dependencies = [
-    "pathspec>=0.12.1",
-    "nbconvert>=7.16.4",
-    "pymupdf4llm>=0.0.17"
+    { name = "pathspec", version = "^0.12.1" },
+    { name = "nbconvert", version = "^7.16.4" },
+    { name = "pymupdf4llm", version = "^0.0.17" }
 ]
 
-[project.scripts]
+[tool.poetry.scripts]
 git2md = "src.git2md:main"
-
-[tool.setuptools]
-packages = ["src"]
-package-data = { "src" = ["*.globalignore"] }
-
-[tool.check-manifest]
-include = [
-    "*.md",
-    "*.rst",
-    "*.txt",
-    "*.toml",
-    "*.py",
-    "*.globalignore",
-    "LICENSE"
-]
-
-[tool.pylint]
-disable = [
-    "C0114", # Missing module docstring
-    "C0115", # Missing class docstring
-    "C0116"  # Missing function docstring
-]
-
-[tool.coverage.run]
-branch = true
-source = ["src"]
 
