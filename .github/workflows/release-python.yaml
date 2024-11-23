@@ -1,4 +1,4 @@
-name: Publish to PyPI and Create GitHub Release
+name: Publish to PyPI and AUR, and Create GitHub Release
 
 on:
   push:
@@ -151,15 +151,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-
-      - name: Install dependencies for AUR publishing
-        run: |
-          pacman -Sy --noconfirm base-devel git
-
-      - name: Generate .SRCINFO file for AUR package
-        run: |
-          makepkg --printsrcinfo > .SRCINFO
-
       - name: Publish package to AUR
         uses: KSXGitHub/github-actions-deploy-aur@v2.6.0
         with:
