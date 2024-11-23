@@ -5,7 +5,7 @@ with open("README.md", encoding="utf-8") as f:
 
 setup(
     name="git2md",
-    version="1.1.0",
+    version="1.1.1",
     description="Convert Git repository contents to Markdown format",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -13,7 +13,6 @@ setup(
     author_email="x30827pos@gmail.com",
     url="https://github.com/xpos587/git2md",
     packages=find_packages(),
-    # install_requires=["pathspec>=0.12.1", "nbconvert>=7.16.4", "pymupdf4llm>=0.0.17"],
     entry_points={
         "console_scripts": [
             "git2md=src.git2md:main",

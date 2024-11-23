@@ -15,7 +15,9 @@ def build_tree(
     """Build a tree structure of the directory."""
     items = sorted(directory.iterdir())
     for item in items:
-        if should_ignore(item.relative_to(directory), gitignore_spec, regex_patterns):
+        if should_ignore(
+            item.relative_to(directory), gitignore_spec, regex_patterns
+        ):
             continue
         if item.is_dir():
             tree_dict[item.name] = {
@@ -24,7 +26,10 @@ def build_tree(
                 "children": {},
             }
             build_tree(
-                item, tree_dict[item.name]["children"], gitignore_spec, regex_patterns
+                item,
+                tree_dict[item.name]["children"],
+                gitignore_spec,
+                regex_patterns,
             )
         else:
             tree_dict[item.name] = {"path": str(item), "is_dir": False}
@@ -79,7 +84,9 @@ def get_language_from_extension(file_path: Path) -> str:
     return extension_to_language.get(file_path.suffix, "plaintext")
 
 
-def should_ignore(file_path: Path, gitignore_spec=None, regex_patterns=None) -> bool:
+def should_ignore(
+    file_path: Path, gitignore_spec=None, regex_patterns=None
+) -> bool:
     """Check if the file should be ignored based on .gitignore and regex patterns."""
     path_str = str(file_path)
 
@@ -151,7 +158,9 @@ def append_to_single_file(
     regex_patterns=None,
 ):
     """Process individual files and append their content in Markdown format."""
-    if should_ignore(file_path.relative_to(git_path), gitignore_spec, regex_patterns):
+    if should_ignore(
+        file_path.relative_to(git_path), gitignore_spec, regex_patterns
+    ):
         return
 
     relative_path = file_path.relative_to(git_path)
@@ -164,7 +173,9 @@ def append_to_single_file(
             }
             md_content = preprocessors[file_path.suffix](file_path)
             if md_content:
-                append_to_file_markdown_style(relative_path, md_content, output_handle)
+                append_to_file_markdown_style(
+                    relative_path, md_content, output_handle
+                )
         else:
             with open(file_path, "r", encoding="utf-8") as f:
                 file_content = f.read()
@@ -185,7 +196,11 @@ def process_directory(
     for file_path in directory.rglob("*"):
         if file_path.is_file():
             append_to_single_file(
-                file_path, directory, output_handle, gitignore_spec, regex_patterns
+                file_path,
+                directory,
+                output_handle,
+                gitignore_spec,
+                regex_patterns,
             )
 
 
@@ -205,7 +220,11 @@ def load_gitignore_patterns(directory: Path):
         with open(globalignore_path, "r", encoding="utf-8") as f:
             patterns.extend(f.read().splitlines())
 
-    return pathspec.PathSpec.from_lines("gitwildmatch", patterns) if patterns else None
+    return (
+        pathspec.PathSpec.from_lines("gitwildmatch", patterns)
+        if patterns
+        else None
+    )
 
 
 def copy_to_clipboard_content(content: str) -> None:
@@ -231,7 +250,10 @@ def main():
         help="List of regular expressions for excluding files or directories.",
     )
     parser.add_argument(
-        "-se", "--skip-empty-files", action="store_true", help="Skip empty files."
+        "-se",
+        "--skip-empty-files",
+        action="store_true",
+        help="Skip empty files.",
     )
     parser.add_argument(
         "-cp",
@@ -264,8 +286,12 @@ def main():
 
     try:
         if input_path.is_dir():
-            write_tree_to_file(input_path, buffer, gitignore_spec, args.regex_exclude)
-            process_directory(input_path, buffer, gitignore_spec, args.regex_exclude)
+            write_tree_to_file(
+                input_path, buffer, gitignore_spec, args.regex_exclude
+            )
+            process_directory(
+                input_path, buffer, gitignore_spec, args.regex_exclude
+            )
         elif input_path.is_file():
             append_to_single_file(
                 input_path,

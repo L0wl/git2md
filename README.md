@@ -56,6 +56,7 @@ pip install git2md
    ```
 
    The script will:
+
    - Install the package in your Python environment.
    - Create a symlink in `/usr/local/bin` for global access (requires `sudo`).
 
@@ -71,14 +72,14 @@ git2md <path> [options]
 
 ### Options
 
-| Option                  | Description                                                                 |
-|-------------------------|-----------------------------------------------------------------------------|
-| `path`                  | Path to the Git project directory or file to process.                      |
-| `-o`, `--output`        | Output file path for saving the generated Markdown.                        |
-| `-rex`, `--regex-exclude` | List of regular expressions to exclude specific files or directories.      |
-| `-se`, `--skip-empty-files` | Skip empty files during processing.                                      |
-| `-cp`, `--clipboard`    | Copy the output content to clipboard (requires `wl-copy`).                 |
-| `-igi`, `--ignore-gitignore` | Ignore `.gitignore` and `.globalignore` rules.                         |
+| Option                       | Description                                                           |
+| ---------------------------- | --------------------------------------------------------------------- |
+| `path`                       | Path to the Git project directory or file to process.                 |
+| `-o`, `--output`             | Output file path for saving the generated Markdown.                   |
+| `-rex`, `--regex-exclude`    | List of regular expressions to exclude specific files or directories. |
+| `-se`, `--skip-empty-files`  | Skip empty files during processing.                                   |
+| `-cp`, `--clipboard`         | Copy the output content to clipboard (requires `wl-copy`).            |
+| `-igi`, `--ignore-gitignore` | Ignore `.gitignore` and `.globalignore` rules.                        |
 
 ---
 
@@ -145,25 +146,25 @@ print("Hello, world!")
 
 The content is converted from `.ipynb` to Markdown and included directly:
 
-````markdown
+```markdown
 # File: notebook.ipynb
 
 # Converted content from Jupyter Notebook...
 
 # End of file: notebook.ipynb
-````
+```
 
 #### Example for a PDF (`document.pdf`)
 
 The content is extracted as Markdown:
 
-````markdown
+```markdown
 # File: document.pdf
 
 # Extracted content from PDF...
 
 # End of file: document.pdf
-````
+```
 
 ---
 

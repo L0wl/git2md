@@ -140,3 +140,26 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create ${{ needs.details.outputs.tag_name }} dist/* --title ${{ needs.details.outputs.tag_name }} --generate-notes
+
+  aur_publish:
+    name: Publish to AUR
+    needs: [setup_and_build, details]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install dependencies for AUR publishing
+        run: sudo pacman -Sy --noconfirm base-devel git
+
+      - name: Generate .SRCINFO file for AUR package
+        run: makepkg --printsrcinfo > .SRCINFO
+
+      - name: Publish package to AUR
+        uses: KSXGitHub/github-actions-deploy-aur@v2.6.0
+        with:
+          pkgname: ${{ env.PACKAGE_NAME }}-git
+          pkgbuild: ./PKGBUILD
+          commit_username: ${{ secrets.AUR_USERNAME }}
+          commit_email: ${{ secrets.AUR_EMAIL }}
+          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
