@@ -8,7 +8,7 @@ from .git2md import (
     convert_ipynb_to_markdown,
 )
 
-__version__ = "1.1.2"
+__version__ = "1.1.3"
 
 __all__ = [
     "build_tree",

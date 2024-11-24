@@ -118,7 +118,7 @@ jobs:
 
   github_release:
     name: Create GitHub Release
-    needs: [setup_and_build, check_pypi]
+    needs: [setup_and_build, details]
     runs-on: ubuntu-latest
     permissions:
       contents: write
