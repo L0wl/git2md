@@ -1,63 +1,14 @@
-import re
+from fnmatch import fnmatch
 import argparse
 import sys
 import subprocess
 from pathlib import Path
-from nbconvert import MarkdownExporter
+from concurrent.futures import ThreadPoolExecutor
+
 from nbformat import read as nb_read, NO_CONVERT
+from nbconvert import MarkdownExporter
 import pymupdf4llm
 import pathspec
-
-
-def build_tree(
-    directory: Path, tree_dict: dict, gitignore_spec=None, regex_patterns=None
-):
-    """Build a tree structure of the directory."""
-    items = sorted(directory.iterdir())
-    for item in items:
-        if should_ignore(
-            item.relative_to(directory), gitignore_spec, regex_patterns
-        ):
-            continue
-        if item.is_dir():
-            tree_dict[item.name] = {
-                "path": str(item),
-                "is_dir": True,
-                "children": {},
-            }
-            build_tree(
-                item,
-                tree_dict[item.name]["children"],
-                gitignore_spec,
-                regex_patterns,
-            )
-        else:
-            tree_dict[item.name] = {"path": str(item), "is_dir": False}
-
-
-def format_tree(tree_dict: dict, padding=""):
-    """Format the tree structure as a string."""
-    lines = ""
-    last_index = len(tree_dict) - 1
-    for index, (name, node) in enumerate(tree_dict.items()):
-        connector = "└──" if index == last_index else "├──"
-        if node["is_dir"]:
-            lines += f"{padding}{connector} {name}/\n"
-            new_padding = padding + ("    " if index == last_index else "│   ")
-            lines += format_tree(node["children"], new_padding)
-        else:
-            lines += f"{padding}{connector} {name}\n"
-    return lines
-
-
-def write_tree_to_file(
-    directory: Path, output_handle, gitignore_spec=None, regex_patterns=None
-):
-    """Write the directory tree to the output as a Markdown code block."""
-    tree_dict = {}
-    build_tree(directory, tree_dict, gitignore_spec, regex_patterns)
-    tree_str = format_tree(tree_dict)
-    output_handle.write(f"```tree\n{tree_str.rstrip()}\n```\n\n")
 
 
 def get_language_from_extension(file_path: Path) -> str:
@@ -80,32 +31,91 @@ def get_language_from_extension(file_path: Path) -> str:
         ".xml": "xml",
         ".sh": "bash",
         ".md": "markdown",
+        ".lua": "lua",
     }
     return extension_to_language.get(file_path.suffix, "plaintext")
 
 
+def build_tree(
+    directory: Path, tree_dict: dict, gitignore_spec=None, glob_patterns=None
+):
+    """Build a tree structure of the directory."""
+    for item in directory.iterdir():  # Убрана сортировка для ускорения
+        if should_ignore(
+            item.relative_to(directory), gitignore_spec, glob_patterns
+        ):
+            continue
+        if item.is_dir():
+            tree_dict[item.name] = {
+                "path": str(item),
+                "is_dir": True,
+                "children": {},
+            }
+            build_tree(
+                item,
+                tree_dict[item.name]["children"],
+                gitignore_spec,
+                glob_patterns,
+            )
+        else:
+            tree_dict[item.name] = {"path": str(item), "is_dir": False}
+
+
+def format_tree(tree_dict: dict, padding="") -> str:
+    result = []
+    items = list(tree_dict.items())
+
+    for i, (name, node) in enumerate(items):
+        is_last = i == len(items) - 1
+        prefix = "└── " if is_last else "├── "
+
+        result.append(
+            f"{padding}{prefix}{name}{
+                '/' if node['is_dir'] else ''}"
+        )
+
+        if node["is_dir"]:
+            next_padding = padding + ("    " if is_last else "│   ")
+            result.append(format_tree(node["children"], next_padding))
+
+    return "\n".join(x for x in result if x)
+
+
+def write_tree_to_file(
+    directory: Path, output_handle, gitignore_spec=None, glob_patterns=None
+):
+    """Write the directory tree to the output as a Markdown code block."""
+    tree_dict = {}
+    build_tree(directory, tree_dict, gitignore_spec, glob_patterns)
+    tree_str = format_tree(tree_dict)
+    output_handle.write(f"\n```tree\n{tree_str.rstrip()}\n```\n\n")
+
+
 def should_ignore(
-    file_path: Path, gitignore_spec=None, regex_patterns=None
+    file_path: Path, gitignore_spec=None, glob_patterns=None
 ) -> bool:
-    """Check if the file should be ignored based on .gitignore and regex patterns."""
     path_str = str(file_path)
 
-    # Always ignore .git directory and .gitignore file
     if ".git" in path_str.split("/") or file_path.name == ".gitignore":
         return True
 
-    # Check .gitignore patterns
     if gitignore_spec:
         norm_path = path_str.replace("\\", "/")
         if file_path.is_dir():
-            norm_path += "/"
-        if gitignore_spec.match_file(norm_path):
-            return True
+            if gitignore_spec.match_file(
+                norm_path
+            ) or gitignore_spec.match_file(norm_path + "/"):
+                return True
+        else:
+            if gitignore_spec.match_file(norm_path):
+                return True
 
-    # Check regex patterns
-    if regex_patterns:
-        for pattern in regex_patterns:
-            if re.search(pattern, path_str):
+    if glob_patterns:
+        rel_path = str(file_path)
+        for pattern in glob_patterns:
+            if fnmatch(rel_path, pattern) or fnmatch(
+                file_path.name, pattern.split("/")[-1]
+            ):
                 return True
 
     return False
@@ -139,14 +149,14 @@ def append_to_file_markdown_style(
     """Append file content to the output in Markdown format."""
     if language:
         output_handle.write(
-            f"# File: {relative_path}\n````{language}\n"
-            f"{file_content}\n````\n# End of file: {relative_path}\n\n"
+            f"## File: {relative_path}\n````{language}\n"
+            f"{file_content}\n````\n## End of file: {relative_path}\n\n"
         )
     else:
         output_handle.write(
-            f"# File: {relative_path}\n"
+            f"## File: {relative_path}\n"
             f"{file_content}\n"
-            f"# End of file: {relative_path}\n\n"
+            f"## End of file: {relative_path}\n\n"
         )
 
 
@@ -155,11 +165,11 @@ def append_to_single_file(
     git_path: Path,
     output_handle,
     gitignore_spec=None,
-    regex_patterns=None,
+    glob_patterns=None,
 ):
     """Process individual files and append their content in Markdown format."""
     if should_ignore(
-        file_path.relative_to(git_path), gitignore_spec, regex_patterns
+        file_path.relative_to(git_path), gitignore_spec, glob_patterns
     ):
         return
 
@@ -189,19 +199,26 @@ def append_to_single_file(
         print(f"Error processing {file_path}: {e}")
 
 
-def process_directory(
-    directory: Path, output_handle, gitignore_spec=None, regex_patterns=None
+def process_directory_parallel(
+    directory: Path, output_handle, gitignore_spec=None, glob_patterns=None
 ):
-    """Recursively process all files in a directory."""
-    for file_path in directory.rglob("*"):
-        if file_path.is_file():
-            append_to_single_file(
-                file_path,
-                directory,
-                output_handle,
-                gitignore_spec,
-                regex_patterns,
-            )
+    """Process all files in a directory using multithreading."""
+    with ThreadPoolExecutor() as executor:
+        futures = []
+        for file_path in directory.rglob("*"):
+            if file_path.is_file():
+                futures.append(
+                    executor.submit(
+                        append_to_single_file,
+                        file_path,
+                        directory,
+                        output_handle,
+                        gitignore_spec,
+                        glob_patterns,
+                    )
+                )
+        for future in futures:
+            future.result()  # Ожидаем завершения всех задач
 
 
 def load_gitignore_patterns(directory: Path):
@@ -212,19 +229,20 @@ def load_gitignore_patterns(directory: Path):
     gitignore_path = directory / ".gitignore"
     if gitignore_path.exists():
         with open(gitignore_path, "r", encoding="utf-8") as f:
-            patterns.extend(f.read().splitlines())
+            git_patterns = f.read().splitlines()
+            patterns.extend(git_patterns)
 
     # Load .globalignore from the script's directory
     globalignore_path = Path(__file__).parent / ".globalignore"
     if globalignore_path.exists():
         with open(globalignore_path, "r", encoding="utf-8") as f:
-            patterns.extend(f.read().splitlines())
+            global_patterns = f.read().splitlines()
+            patterns.extend(global_patterns)
 
-    return (
-        pathspec.PathSpec.from_lines("gitwildmatch", patterns)
-        if patterns
-        else None
-    )
+    if not patterns:
+        return None
+
+    return pathspec.PathSpec.from_lines("gitwildmatch", patterns)
 
 
 def copy_to_clipboard_content(content: str) -> None:
@@ -240,14 +258,19 @@ def copy_to_clipboard_content(content: str) -> None:
 
 def main():
     parser = argparse.ArgumentParser(description="Convert files to Markdown.")
-    parser.add_argument("path", help="Path to the directory or file.")
+    parser.add_argument(
+        "path",
+        nargs="?",
+        default=".",
+        help="Path to the directory or file (default: current directory).",
+    )
     parser.add_argument("-o", "--output", help="Output file path.")
     parser.add_argument(
-        "-rex",
-        "--regex-exclude",
+        "-gexc",
+        "--glob-exclude",
         nargs="*",
         default=[],
-        help="List of regular expressions for excluding files or directories.",
+        help="List of glob patterns for excluding files or directories (e.g., '*.log' '*.tmp').",
     )
     parser.add_argument(
         "-se",
@@ -287,18 +310,24 @@ def main():
     try:
         if input_path.is_dir():
             write_tree_to_file(
-                input_path, buffer, gitignore_spec, args.regex_exclude
+                input_path, buffer, gitignore_spec, args.glob_exclude
             )
-            process_directory(
-                input_path, buffer, gitignore_spec, args.regex_exclude
-            )
+            for file_path in input_path.rglob("*"):
+                if file_path.is_file():
+                    append_to_single_file(
+                        file_path,
+                        input_path,
+                        buffer,
+                        gitignore_spec,
+                        args.glob_exclude,
+                    )
         elif input_path.is_file():
             append_to_single_file(
                 input_path,
                 input_path.parent,
                 buffer,
                 gitignore_spec,
-                args.regex_exclude,
+                args.glob_exclude,
             )
         else:
             print(f"Error: Unsupported path type: {input_path}")
@@ -307,19 +336,14 @@ def main():
         content = buffer.getvalue()
 
         if args.output:
-            output_file = Path(args.output)
-            with output_file.open("w", encoding="utf-8") as out_fh:
+            with Path(args.output).open("w", encoding="utf-8") as out_fh:
                 out_fh.write(content)
-
-            if args.clipboard:
-                copy_to_clipboard_content(content)
-                print(f"Contents from {output_file} copied to clipboard.")
+            print(f"Contents saved to {args.output}.")
+        elif args.clipboard:
+            copy_to_clipboard_content(content)
+            print("Contents copied to clipboard.")
         else:
-            if args.clipboard:
-                copy_to_clipboard_content(content)
-                print("Contents copied to clipboard.")
-            else:
-                print(content)
+            print(content)
 
     finally:
         buffer.close()

@@ -118,7 +118,7 @@ jobs:
 
   github_release:
     name: Create GitHub Release
-    needs: [setup_and_build]
+    needs: [setup_and_build, check_pypi]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -151,6 +151,12 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
       - name: Publish package to AUR
         uses: KSXGitHub/github-actions-deploy-aur@v2.6.0
         with:

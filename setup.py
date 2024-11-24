@@ -5,7 +5,7 @@ with open("README.md", encoding="utf-8") as f:
 
 setup(
     name="git2md",
-    version="1.1.1",
+    version="1.1.2",
     description="Convert Git repository contents to Markdown format",
     long_description=long_description,
     long_description_content_type="text/markdown",

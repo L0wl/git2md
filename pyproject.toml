@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "git2md"
-version = "1.1.1"
+version = "1.1.2"
 description = "Convert Git repository contents to Markdown format."
 readme = "README.md"
 authors = ["Michael <x30827pos@gmail.com>"]

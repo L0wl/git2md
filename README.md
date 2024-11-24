@@ -1,6 +1,12 @@
 # git2md
 
-A command-line tool for converting Git repository contents to Markdown format. This tool generates a Markdown file containing the repository's directory tree and the contents of its files. It supports various file types, including Python scripts, Markdown files, Jupyter Notebooks, and PDFs.
+![PyPI](https://img.shields.io/pypi/v/git2md)
+![Python Version](https://img.shields.io/pypi/pyversions/git2md)
+![Build Status](https://img.shields.io/github/actions/workflow/status/xpos587/git2md/release-python.yaml?branch=main)
+![License](https://img.shields.io/github/license/xpos587/git2md)
+![AUR version](https://img.shields.io/aur/version/git2md-git)
+
+A powerful command-line tool for converting Git repository contents into Markdown format. This tool is ideal for developers and documentation specialists who need to generate structured Markdown files from Git repositories, including directory trees and file contents.
 
 ---
 
@@ -15,6 +21,13 @@ A command-line tool for converting Git repository contents to Markdown format. T
 - **Custom exclusion patterns**: Use regular expressions to exclude specific files or directories.
 - **Skip empty files**: Avoids processing files with no content.
 - **Copy output to clipboard**: Easily copy the generated Markdown output for further use.
+- **Multithreading support**: Speeds up file processing for large repositories.
+
+---
+
+## Demonstration
+
+_Add a demonstration GIF here to showcase how the tool works._
 
 ---
 
@@ -40,6 +53,14 @@ You can install `git2md` directly from PyPI using pip:
 pip install git2md
 ```
 
+### Install from AUR (Arch Linux)
+
+For Arch Linux users, the package is available in the AUR as `git2md-git`. You can install it using an AUR helper like `paru` or `yay`:
+
+```bash
+paru -S git2md-git
+```
+
 ### Install from source
 
 1. Clone the repository:
@@ -49,16 +70,12 @@ pip install git2md
    cd git2md
    ```
 
-2. Run the installation script:
+2. Build and install:
 
    ```bash
-   python install.py
+   python setup.py build
+   pip install .
    ```
-
-   The script will:
-
-   - Install the package in your Python environment.
-   - Create a symlink in `/usr/local/bin` for global access (requires `sudo`).
 
 ---
 
@@ -67,19 +84,21 @@ pip install git2md
 ### Basic Command
 
 ```bash
-git2md <path> [options]
+git2md [path] [options]
 ```
+
+Если путь не указан, будет использована текущая директория.
 
 ### Options
 
-| Option                       | Description                                                           |
-| ---------------------------- | --------------------------------------------------------------------- |
-| `path`                       | Path to the Git project directory or file to process.                 |
-| `-o`, `--output`             | Output file path for saving the generated Markdown.                   |
-| `-rex`, `--regex-exclude`    | List of regular expressions to exclude specific files or directories. |
-| `-se`, `--skip-empty-files`  | Skip empty files during processing.                                   |
-| `-cp`, `--clipboard`         | Copy the output content to clipboard (requires `wl-copy`).            |
-| `-igi`, `--ignore-gitignore` | Ignore `.gitignore` and `.globalignore` rules.                        |
+| Option                       | Description                                                            |
+| ---------------------------- | ---------------------------------------------------------------------- |
+| `path`                       | Path to the Git project directory or file (default: current directory) |
+| `-o`, `--output`             | Output file path for saving the generated Markdown                     |
+| `-gexc`, `--glob-exclude`    | List of glob patterns for excluding files or directories               |
+| `-se`, `--skip-empty-files`  | Skip empty files during processing                                     |
+| `-cp`, `--clipboard`         | Copy the output content to clipboard (requires `wl-copy`)              |
+| `-igi`, `--ignore-gitignore` | Ignore `.gitignore` and `.globalignore` rules                          |
 
 ---
 
@@ -91,22 +110,22 @@ git2md <path> [options]
 git2md /path/to/repo -o output.md
 ```
 
-### Exclude specific files/directories using regex
+### Exclude specific files using glob patterns
 
 ```bash
-git2md /path/to/repo -rex ".*\.log$" ".*\.tmp$" -o output.md
+git2md -gexc "*.log" "*.tmp" -o output.md
 ```
 
 ### Skip empty files and copy output to clipboard
 
 ```bash
-git2md /path/to/repo -se -cp
+git2md -se -cp
 ```
 
 ### Ignore `.gitignore` rules
 
 ```bash
-git2md /path/to/repo -igi -o output.md
+git2md -igi -o output.md
 ```
 
 ---
