@@ -1,4 +1,4 @@
-# git2md
+# 🔄 git2md
 
 ![PyPI](https://img.shields.io/pypi/v/git2md)
 ![Python Version](https://img.shields.io/pypi/pyversions/git2md)
@@ -6,36 +6,38 @@
 ![License](https://img.shields.io/github/license/xpos587/git2md)
 ![AUR version](https://img.shields.io/aur/version/git2md-git)
 
-A powerful command-line tool for converting Git repository contents into Markdown format. This tool is ideal for developers and documentation specialists who need to generate structured Markdown files from Git repositories, including directory trees and file contents.
+🚀 A powerful command-line tool for converting Git repository contents into Markdown format. This tool is ideal for developers and documentation specialists who need to generate structured Markdown files from Git repositories, including directory trees and file contents.
 
 ---
 
-## Features
+## ✨ Features
 
-- **Generate repository directory tree**: Outputs the structure of the repository in a `tree` block format.
-- **Convert files to Markdown**:
+- **🌳 Generate repository directory tree**: Outputs the structure of the repository in a `tree` block format.
+- **📝 Convert files to Markdown**:
   - Supports syntax highlighting for code files.
   - Converts Jupyter Notebooks (`.ipynb`) and PDFs (`.pdf`) into Markdown.
-- **Support for `.gitignore` and `.globalignore`**:
+- **🎯 Support for `.gitignore` and `.globalignore`**:
   - Automatically excludes files/directories listed in `.gitignore` or `.globalignore`.
-- **Custom exclusion patterns**: Use regular expressions to exclude specific files or directories.
-- **Skip empty files**: Avoids processing files with no content.
-- **Copy output to clipboard**: Easily copy the generated Markdown output for further use.
-- **Multithreading support**: Speeds up file processing for large repositories.
+- **🔍 Custom exclusion patterns**: Use regular expressions to exclude specific files or directories.
+- **🗑️ Skip empty files**: Avoids processing files with no content.
+- **📋 Copy output to clipboard**: Easily copy the generated Markdown output for further use.
+- **⚡ Multithreading support**: Speeds up file processing for large repositories.
 
 ---
 
-## Demonstration
+## 🎬 Demonstration
 
-_Add a demonstration GIF here to showcase how the tool works._
+Below is a demonstration of how `git2md` works:
+
+![git2md demonstration](https://raw.githubusercontent.com/Xpos587/git2md/refs/heads/main/assets/demo.gif)
 
 ---
 
-## Requirements
+## 📋 Requirements
 
-- **Python 3.12 or higher**
-- **Linux operating system**
-- **Dependencies**:
+- **🐍 Python 3.12 or higher**
+- **🐧 Linux operating system**
+- **📦 Dependencies**:
   - `pathspec` (for `.gitignore` support)
   - `nbconvert` (for Jupyter Notebook conversion)
   - `PyMuPDF4LLM` (for PDF conversion)
@@ -43,9 +45,9 @@ _Add a demonstration GIF here to showcase how the tool works._
 
 ---
 
-## Installation
+## 📥 Installation
 
-### Install from PyPI
+### 📦 Install from PyPI
 
 You can install `git2md` directly from PyPI using pip:
 
@@ -53,7 +55,7 @@ You can install `git2md` directly from PyPI using pip:
 pip install git2md
 ```
 
-### Install from AUR (Arch Linux)
+### 🏗️ Install from AUR (Arch Linux)
 
 For Arch Linux users, the package is available in the AUR as `git2md-git`. You can install it using an AUR helper like `paru` or `yay`:
 
@@ -61,7 +63,7 @@ For Arch Linux users, the package is available in the AUR as `git2md-git`. You c
 paru -S git2md-git
 ```
 
-### Install from source
+### 🔨 Install from source
 
 1. Clone the repository:
 
@@ -79,9 +81,9 @@ paru -S git2md-git
 
 ---
 
-## Usage
+## 🚀 Usage
 
-### Basic Command
+### 💻 Basic Command
 
 ```bash
 git2md [path] [options]
@@ -89,7 +91,7 @@ git2md [path] [options]
 
 Если путь не указан, будет использована текущая директория.
 
-### Options
+### ⚙️ Options
 
 | Option                       | Description                                                            |
 | ---------------------------- | ---------------------------------------------------------------------- |
@@ -102,27 +104,27 @@ git2md [path] [options]
 
 ---
 
-## Examples
+## 📝 Examples
 
-### Generate Markdown for an entire repository
+### 📂 Generate Markdown for an entire repository
 
 ```bash
 git2md /path/to/repo -o output.md
 ```
 
-### Exclude specific files using glob patterns
+### 🔍 Exclude specific files using glob patterns
 
 ```bash
 git2md -gexc "*.log" "*.tmp" -o output.md
 ```
 
-### Skip empty files and copy output to clipboard
+### 🗑️ Skip empty files and copy output to clipboard
 
 ```bash
 git2md -se -cp
 ```
 
-### Ignore `.gitignore` rules
+### 🚫 Ignore `.gitignore` rules
 
 ```bash
 git2md -igi -o output.md
@@ -130,9 +132,9 @@ git2md -igi -o output.md
 
 ---
 
-## Output Format
+## 📄 Output Format
 
-### Directory Tree
+### 🌳 Directory Tree
 
 The directory tree is included as a code block with the language identifier `tree`. For example:
 
@@ -145,11 +147,11 @@ src/
 └── README.md
 ```
 
-### File Contents
+### 📑 File Contents
 
 Each file is included with its relative path as a header, followed by its content in a code block.
 
-#### Example for a Python File (`main.py`)
+#### 🐍 Example for a Python File (`main.py`)
 
 ````markdown
 # File: src/main.py
@@ -161,7 +163,7 @@ print("Hello, world!")
 # End of file: src/main.py
 ````
 
-#### Example for a Jupyter Notebook (`notebook.ipynb`)
+#### 📓 Example for a Jupyter Notebook (`notebook.ipynb`)
 
 The content is converted from `.ipynb` to Markdown and included directly:
 
@@ -173,7 +175,7 @@ The content is converted from `.ipynb` to Markdown and included directly:
 # End of file: notebook.ipynb
 ```
 
-#### Example for a PDF (`document.pdf`)
+#### 📄 Example for a PDF (`document.pdf`)
 
 The content is extracted as Markdown:
 
@@ -187,11 +189,11 @@ The content is extracted as Markdown:
 
 ---
 
-## Global Ignore Patterns
+## 🔧 Global Ignore Patterns
 
 You can create a `.globalignore` file in the same directory as the script to specify patterns that should be ignored across all repositories. The format is identical to `.gitignore`.
 
-#### Example `.globalignore`
+#### 📝 Example `.globalignore`
 
 ```plaintext
 __pycache__/
@@ -203,7 +205,7 @@ __pycache__/
 
 ---
 
-## Development
+## 👨‍💻 Development
 
 To set up the development environment:
 
@@ -228,13 +230,13 @@ To set up the development environment:
 
 ---
 
-## License
+## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 
-## Contributing
+## 🤝 Contributing
 
 1. Fork the repository.
 2. Create your feature branch (`git checkout -b feature/amazing-feature`).
@@ -244,14 +246,14 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-## Authors
+## 👥 Authors
 
 Michael (<x30827pos@gmail.com>)
 
 ---
 
-## Acknowledgments
+## 🙏 Acknowledgments
 
-Thanks to the developers of the `pathspec`, `nbconvert`, and `PyMuPDF4LLM` libraries.
+Thanks to the developers of the `pathspec`, `nbconvert`, `nbformat`, and `PyMuPDF4LLM` libraries.
 
 Inspired by the need to easily document Git repositories for LLM-based workflows.
