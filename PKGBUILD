@@ -3,7 +3,7 @@
 # Source URL: https://github.com/xpos587/git2md
 
 pkgname=python-git2md
-pkgver=1.1.4
+pkgver=1.1.5
 pkgrel=1
 pkgdesc="Convert Git repository contents to Markdown format"
 arch=('any')
