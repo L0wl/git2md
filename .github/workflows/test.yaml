@@ -1,43 +1,88 @@
-name: Release Workflow
+name: CI/CD Pipeline
 
 on:
   push:
-    tags:
-      - "[0-9]+.[0-9]+.[0-9]+"
-      - "[0-9]+.[0-9]+.[0-9]+a[0-9]+"
-      - "[0-9]+.[0-9]+.[0-9]+b[0-9]+"
-      - "[0-9]+.[0-9]+.[0-9]+rc[0-9]+"
+    branches:
+      - "**"
 
 env:
   PACKAGE_NAME: "git2md"
+  AUR_PACKAGE_NAME: "python-git2md"
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [ "3.10", "3.11", "3.12", "3.13" ]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Micromamba
+        uses: mamba-org/setup-micromamba@v1
+        with:
+          environment-file: environment.yml
+          cache-environment: true
+          cache-downloads: true
+          create-args: >-
+            python=${{ matrix.python-version }}
+
+      - name: Install dev dependencies
+        shell: bash -l {0}
+        run: |
+          micromamba install -y pytest pytest-cov ruff mypy build setuptools wheel
+
+      - name: Lint with ruff
+        shell: bash -l {0}
+        run: ruff check .
+
+      - name: Type check with mypy
+        shell: bash -l {0}
+        run: mypy .
+
+      - name: Run tests with coverage
+        shell: bash -l {0}
+        run: |
+          if [ -d tests ] || [ -f pytest.ini ]; then
+            pytest --cov=./ --cov-report=xml
+          else
+            echo "No tests found."
+          fi
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: ./coverage.xml
+          fail_ci_if_error: true
+
   details:
+    needs: test
+    if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     outputs:
       new_version: ${{ steps.release.outputs.new_version }}
       suffix: ${{ steps.release.outputs.suffix }}
       tag_name: ${{ steps.release.outputs.tag_name }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Extract tag and Details
         id: release
         run: |
-          if [ "${{ github.ref_type }}" = "tag" ]; then
-            TAG_NAME=${GITHUB_REF#refs/tags/}
-            NEW_VERSION=$(echo $TAG_NAME | awk -F'-' '{print $1}')
-            SUFFIX=$(echo $TAG_NAME | grep -oP '[a-z]+[0-9]+' || echo "")
-            echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
-            echo "suffix=$SUFFIX" >> "$GITHUB_OUTPUT"
-            echo "tag_name=$TAG_NAME" >> "$GITHUB_OUTPUT"
-            echo "Version is $NEW_VERSION"
-            echo "Suffix is $SUFFIX"
-            echo "Tag name is $TAG_NAME"
-          else
-            echo "No tag found"
-            exit 1
-          fi
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          NEW_VERSION=$(echo $TAG_NAME | awk -F'-' '{print $1}')
+          SUFFIX=$(echo $TAG_NAME | grep -oP '[a-z]+[0-9]+' || echo "")
+          echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+          echo "suffix=$SUFFIX" >> "$GITHUB_OUTPUT"
+          echo "tag_name=$TAG_NAME" >> "$GITHUB_OUTPUT"
+          echo "Version is $NEW_VERSION"
+          echo "Suffix is $SUFFIX"
+          echo "Tag name is $TAG_NAME"
 
   check_pypi:
     needs: details
@@ -61,42 +106,46 @@ jobs:
           if [ "$(printf '%s\n' "$LATEST_VERSION" "$NEW_VERSION" | sort -rV | head -n 1)" != "$NEW_VERSION" ] || [ "$NEW_VERSION" == "$LATEST_VERSION" ]; then
             echo "The new version $NEW_VERSION is not greater than the latest version $LATEST_VERSION on PyPI."
             exit 1
-          else
-            echo "The new version $NEW_VERSION is greater than the latest version $LATEST_VERSION on PyPI."
           fi
 
-  setup_and_build:
-    needs: details
+  build:
+    needs: [ test, details ]
+    if: always() && (needs.details.result == 'success' || needs.details.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - name: Setup Micromamba
+        uses: mamba-org/setup-micromamba@v1
         with:
-          python-version: "3.12"
-
-      - name: Update version in setup.py
-        run: |
-          sed -i "s/version=.*,/version='${{ needs.details.outputs.new_version }}',/" setup.py
+          environment-file: environment.yml
+          cache-environment: true
+          create-args: >-
+            python=3.12
 
       - name: Install build dependencies
+        shell: bash -l {0}
         run: |
-          python -m pip install --upgrade pip
-          pip install build wheel
+          micromamba install -y build wheel twine
 
       - name: Build package
-        run: python -m build
+        shell: bash -l {0}
+        run: python -m build --sdist --wheel
+
+      - name: Check package
+        shell: bash -l {0}
+        run: twine check dist/*
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: dist
           path: dist/
 
   pypi_publish:
     name: Upload release to PyPI
-    needs: [ setup_and_build, check_pypi ]
+    needs: [ build, check_pypi ]
+    if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     environment:
       name: release
@@ -114,13 +163,13 @@ jobs:
 
   github_release:
     name: Create GitHub Release
-    needs: [ setup_and_build, details ]
+    needs: [ build, details ]
+    if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -131,7 +180,6 @@ jobs:
           path: dist/
 
       - name: Create GitHub Release
-        id: create_release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -139,22 +187,18 @@ jobs:
 
   aur_publish:
     name: Publish to AUR
-    needs: [ setup_and_build ]
+    needs: [ build, details ]
+    if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     container:
       image: archlinux/archlinux:latest
     steps:
-      - uses: actions/checkout@v2
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
+      - uses: actions/checkout@v4
 
       - name: Publish package to AUR
         uses: KSXGitHub/github-actions-deploy-aur@v2.6.0
         with:
-          pkgname: "python-${{ env.PACKAGE_NAME }}"
+          pkgname: ${{ env.AUR_PACKAGE_NAME }}
           pkgbuild: ./PKGBUILD
           commit_username: ${{ secrets.AUR_USERNAME }}
           commit_email: ${{ secrets.AUR_EMAIL }}
