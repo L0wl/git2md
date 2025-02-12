@@ -1,0 +1,147 @@
+name: Publish to PyPI, AUR, and Create GitHub Release
+
+on:
+  push:
+    tags:
+      - "[0-9]+\\.[0-9]+\\.[0-9]+"
+      - "[0-9]+\\.[0-9]+\\.[0-9]+a[0-9]+"
+      - "[0-9]+\\.[0-9]+\\.[0-9]+b[0-9]+"
+      - "[0-9]+\\.[0-9]+\\.[0-9]+rc[0-9]+"
+
+env:
+  PACKAGE_NAME: "git2md"
+  # DRY_RUN=true – тестовый запуск, публикация отключена.
+  # Для реального релиза установите DRY_RUN в "false"
+  DRY_RUN: "true"
+
+jobs:
+  details:
+    runs-on: ubuntu-latest
+    outputs:
+      new_version: ${{ steps.release.outputs.new_version }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from setup.py
+        id: release
+        run: |
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          NEW_VERSION=$(python setup.py --version)
+          echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag_name=$TAG_NAME" >> "$GITHUB_OUTPUT"
+          echo "Version: $NEW_VERSION"
+
+  check_pypi:
+    needs: details
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch latest version from PyPI
+        run: |
+          response=$(curl -s https://pypi.org/pypi/${{ env.PACKAGE_NAME }}/json || echo "{}")
+          latest_previous_version=$(echo $response | jq -r ".info.version // \"0.0.0\"")
+          echo "Latest PyPI version: $latest_previous_version"
+          echo "latest_previous_version=$latest_previous_version" >> $GITHUB_ENV
+
+      - name: Compare versions
+        run: |
+          NEW_VERSION=${{ needs.details.outputs.new_version }}
+          LATEST_VERSION=$latest_previous_version
+          if [ "$(printf '%s\n' "$LATEST_VERSION" "$NEW_VERSION" | sort -rV | head -n 1)" != "$NEW_VERSION" ]; then
+            echo "New version ($NEW_VERSION) is not greater than latest PyPI version ($LATEST_VERSION). Skipping release."
+            exit 1
+          fi
+
+  build_package:
+    needs: details
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build tools
+        run: pip install --upgrade build setuptools wheel
+
+      - name: Build package
+        run: python -m build
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: dist
+          path: dist/
+
+  pypi_publish:
+    name: Upload release to PyPI
+    needs: [ build_package, check_pypi ]
+    runs-on: ubuntu-latest
+    if: env.DRY_RUN == 'false'
+    permissions:
+      id-token: write
+    steps:
+      - name: Download built artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish distribution to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+
+  github_release:
+    name: Create GitHub Release
+    needs: [ build_package, details ]
+    runs-on: ubuntu-latest
+    if: env.DRY_RUN == 'false'
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download built artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: dist
+          path: dist/
+
+      - name: Create GitHub Release (Draft)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ needs.details.outputs.tag_name }}" dist/* --title "Release ${{ needs.details.outputs.tag_name }}" --generate-notes --draft
+
+  aur_publish:
+    name: Publish to AUR
+    needs: [ build_package ]
+    runs-on: ubuntu-latest
+    if: env.DRY_RUN == 'false'
+    container:
+      image: archlinux/archlinux:latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: pacman -Sy --noconfirm base-devel git
+
+      - name: Update PKGBUILD version
+        run: |
+          NEW_VERSION=${{ needs.details.outputs.new_version }}
+          sed -i "s/^pkgver=.*/pkgver=$NEW_VERSION/" PKGBUILD
+          sed -i "s/^pkgrel=.*/pkgrel=1/" PKGBUILD
+          echo "Updated PKGBUILD:"
+          grep "^pkgver" PKGBUILD
+          grep "^pkgrel" PKGBUILD
+
+      - name: Publish package to AUR
+        uses: KSXGitHub/github-actions-deploy-aur@v2.6.0
+        with:
+          pkgname: "python-${{ env.PACKAGE_NAME }}"
+          pkgbuild: ./PKGBUILD
+          commit_username: "AUR Bot"
+          commit_email: "aur@github.com"
+          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+          ssh_keyscan_types: rsa,ecdsa,ed25519

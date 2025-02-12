@@ -1,352 +1,212 @@
-from fnmatch import fnmatch
+from __future__ import annotations
+
 import argparse
+import importlib
+import logging
+import pkgutil
 import sys
-import subprocess
 from pathlib import Path
-from concurrent.futures import ThreadPoolExecutor
+from types import ModuleType
+from pathspec import PathSpec
 
-from nbformat import read as nb_read, NO_CONVERT
-from nbconvert import MarkdownExporter
-import pymupdf4llm
-import pathspec
+from converters.base import BaseConverter
+from exporters.base import BaseExporter
+from utils.ignore import (
+    should_ignore,
+    load_ignore,
+)
+from utils.tree import build_tree, TreeNode
+from utils.clipboard import copy_content
 
-
-def get_language_from_extension(file_path: Path) -> str:
-    """Determine the programming language from the file extension."""
-    extension_to_language = {
-        ".py": "python",
-        ".rs": "rust",
-        ".js": "javascript",
-        ".ts": "typescript",
-        ".html": "html",
-        ".css": "css",
-        ".java": "java",
-        ".cpp": "cpp",
-        ".c": "c",
-        ".cs": "csharp",
-        ".rb": "ruby",
-        ".php": "php",
-        ".json": "json",
-        ".jsonc": "jsonc",
-        ".xml": "xml",
-        ".sh": "bash",
-        ".md": "markdown",
-        ".lua": "lua",
-    }
-    return extension_to_language.get(file_path.suffix, "plaintext")
+logger = logging.getLogger(__name__)
 
 
-def build_tree(
-    directory: Path, tree_dict: dict, gitignore_spec=None, glob_patterns=None
-):
-    """Build a tree structure of the directory."""
-    for item in directory.iterdir():  # Убрана сортировка для ускорения
-        if should_ignore(
-            item.relative_to(directory), gitignore_spec, glob_patterns
-        ):
-            continue
-        if item.is_dir():
-            tree_dict[item.name] = {
-                "path": str(item),
-                "is_dir": True,
-                "children": {},
-            }
-            build_tree(
-                item,
-                tree_dict[item.name]["children"],
-                gitignore_spec,
-                glob_patterns,
-            )
-        else:
-            tree_dict[item.name] = {"path": str(item), "is_dir": False}
+def load_converters() -> list[BaseConverter]:
+    import converters  # the "converters" package
+
+    converters_module: ModuleType = converters
+    converter_paths: list[str] = list(converters_module.__path__)
+    result: list[BaseConverter] = []
+
+    for module_info in pkgutil.iter_modules(converter_paths):
+        module_name = f"converters.{module_info.name}"
+        module = importlib.import_module(module_name)
+        conv = getattr(module, "converter", None)
+        if isinstance(conv, BaseConverter):
+            result.append(conv)
+
+    return result
 
 
-def format_tree(tree_dict: dict, padding="") -> str:
-    result = []
-    items = list(tree_dict.items())
+def load_exporters() -> list[BaseExporter]:
+    import exporters  # the "exporters" package
 
-    for i, (name, node) in enumerate(items):
-        is_last = i == len(items) - 1
-        prefix = "└── " if is_last else "├── "
+    exporters_module: ModuleType = exporters
+    exporter_paths: list[str] = list(exporters_module.__path__)
+    result: list[BaseExporter] = []
 
-        result.append(
-            f"{padding}{prefix}{name}{
-                '/' if node['is_dir'] else ''}"
-        )
+    for module_info in pkgutil.iter_modules(exporter_paths):
+        module_name = f"exporters.{module_info.name}"
+        module = importlib.import_module(module_name)
+        exp = getattr(module, "exporter", None)
+        if isinstance(exp, BaseExporter):
+            result.append(exp)
 
-        if node["is_dir"]:
-            next_padding = padding + ("    " if is_last else "│   ")
-            result.append(format_tree(node["children"], next_padding))
-
-    return "\n".join(x for x in result if x)
+    return result
 
 
-def write_tree_to_file(
-    directory: Path, output_handle, gitignore_spec=None, glob_patterns=None
-):
-    """Write the directory tree to the output as a Markdown code block."""
-    tree_dict = {}
-    build_tree(directory, tree_dict, gitignore_spec, glob_patterns)
-    tree_str = format_tree(tree_dict)
-    output_handle.write(f"\n```tree\n{tree_str.rstrip()}\n```\n\n")
-
-
-def should_ignore(
-    file_path: Path, gitignore_spec=None, glob_patterns=None
-) -> bool:
-    path_str = str(file_path)
-
-    if ".git" in path_str.split("/") or file_path.name == ".gitignore":
-        return True
-
-    if gitignore_spec:
-        norm_path = path_str.replace("\\", "/")
-        if file_path.is_dir():
-            if gitignore_spec.match_file(
-                norm_path
-            ) or gitignore_spec.match_file(norm_path + "/"):
-                return True
-        else:
-            if gitignore_spec.match_file(norm_path):
-                return True
-
-    if glob_patterns:
-        rel_path = str(file_path)
-        for pattern in glob_patterns:
-            if fnmatch(rel_path, pattern) or fnmatch(
-                file_path.name, pattern.split("/")[-1]
-            ):
-                return True
-
-    return False
-
-
-def convert_pdf_to_markdown(pdf_path):
-    """Convert a PDF file to Markdown format."""
-    try:
-        return pymupdf4llm.to_markdown(pdf_path)
-    except Exception as e:
-        print(f"Error converting PDF to Markdown: {e}")
-        return None
-
-
-def convert_ipynb_to_markdown(ipynb_path):
-    """Convert a Jupyter Notebook to Markdown format."""
-    try:
-        with open(ipynb_path, "r", encoding="utf-8") as f:
-            notebook = nb_read(f, as_version=NO_CONVERT)
-        exporter = MarkdownExporter()
-        body, _ = exporter.from_notebook_node(notebook)
-        return body
-    except Exception as e:
-        print(f"Error converting Jupyter Notebook to Markdown: {e}")
-        return None
-
-
-def append_to_file_markdown_style(
-    relative_path: Path, file_content: str, output_handle, language=None
-) -> None:
-    """Append file content to the output in Markdown format."""
-    if language:
-        output_handle.write(
-            f"## File: {relative_path}\n````{language}\n"
-            f"{file_content}\n````\n## End of file: {relative_path}\n\n"
-        )
-    else:
-        output_handle.write(
-            f"## File: {relative_path}\n"
-            f"{file_content}\n"
-            f"## End of file: {relative_path}\n\n"
-        )
-
-
-def append_to_single_file(
+def get_converter(
     file_path: Path,
-    git_path: Path,
-    output_handle,
-    gitignore_spec=None,
-    glob_patterns=None,
-):
-    """Process individual files and append their content in Markdown format."""
-    if should_ignore(
-        file_path.relative_to(git_path), gitignore_spec, glob_patterns
-    ):
-        return
-
-    relative_path = file_path.relative_to(git_path)
-    try:
-        # Handle pre-processed files (e.g., PDF, ipynb)
-        if file_path.suffix in [".pdf", ".ipynb"]:
-            preprocessors = {
-                ".pdf": convert_pdf_to_markdown,
-                ".ipynb": convert_ipynb_to_markdown,
-            }
-            md_content = preprocessors[file_path.suffix](file_path)
-            if md_content:
-                append_to_file_markdown_style(
-                    relative_path, md_content, output_handle
-                )
-        else:
-            with open(file_path, "r", encoding="utf-8") as f:
-                file_content = f.read()
-            language = get_language_from_extension(file_path)
-            append_to_file_markdown_style(
-                relative_path, file_content, output_handle, language=language
-            )
-    except UnicodeDecodeError:
-        print(f"Warning: Could not decode {file_path}. Skipping.")
-    except Exception as e:
-        print(f"Error processing {file_path}: {e}")
+    converters_list: list[BaseConverter],
+    default_converter: BaseConverter,
+) -> BaseConverter:
+    for conv in converters_list:
+        if conv.supports(file_path):
+            return conv
+    return default_converter
 
 
-def process_directory_parallel(
-    directory: Path, output_handle, gitignore_spec=None, glob_patterns=None
-):
-    """Process all files in a directory using multithreading."""
-    with ThreadPoolExecutor() as executor:
-        futures = []
-        for file_path in directory.rglob("*"):
-            if file_path.is_file():
-                futures.append(
-                    executor.submit(
-                        append_to_single_file,
-                        file_path,
-                        directory,
-                        output_handle,
-                        gitignore_spec,
-                        glob_patterns,
-                    )
-                )
-        for future in futures:
-            future.result()  # Ожидаем завершения всех задач
+TreeDict = dict[str, dict[str, object]]
 
 
-def load_gitignore_patterns(directory: Path):
-    """Load patterns from .gitignore and .globalignore."""
-    patterns = []
+def format_tree(node: TreeNode, prefix: str = "") -> str:
+    """
+    Превращает `TreeNode` в красиво оформленное дерево строк.
+    """
+    lines: list[str] = []
+    entries = list(node.children.items()) if node.children else []
 
-    # Load .gitignore from the root directory
-    gitignore_path = directory / ".gitignore"
-    if gitignore_path.exists():
-        with open(gitignore_path, "r", encoding="utf-8") as f:
-            git_patterns = f.read().splitlines()
-            patterns.extend(git_patterns)
+    for index, (name, child) in enumerate(entries):
+        connector: str = "└── " if index == len(entries) - 1 else "├── "
+        line: str = prefix + connector + name
+        if child.is_dir:
+            line += "/"
+        lines.append(line)
 
-    # Load .globalignore from the script's directory
-    globalignore_path = Path(__file__).parent / ".globalignore"
-    if globalignore_path.exists():
-        with open(globalignore_path, "r", encoding="utf-8") as f:
-            global_patterns = f.read().splitlines()
-            patterns.extend(global_patterns)
+        if child.is_dir and child.children:
+            extension: str = "    " if index == len(entries) - 1 else "│   "
+            deeper: str = format_tree(child, prefix + extension)
+            lines.append(deeper)
 
-    if not patterns:
-        return None
-
-    return pathspec.PathSpec.from_lines("gitwildmatch", patterns)
+    return "\n".join(lines)
 
 
-def copy_to_clipboard_content(content: str) -> None:
-    """Copy the given content to the clipboard using wl-copy."""
-    try:
-        process = subprocess.Popen(["wl-copy"], stdin=subprocess.PIPE)
-        process.communicate(input=content.encode("utf-8"))
-    except FileNotFoundError:
-        print("Clipboard functionality requires 'wl-copy' to be installed.")
-    except ValueError as e:
-        print(f"Error copying to clipboard: {e}")
+def process_file(
+    file_path: Path,
+    converters_list: list[BaseConverter],
+    default_converter: BaseConverter,
+) -> str:
+    """
+    Обрабатывает один файл с использованием подходящего конвертера.
+    """
+    conv = get_converter(file_path, converters_list, default_converter)
+    return conv.convert(file_path)
 
 
-def main():
-    parser = argparse.ArgumentParser(description="Convert files to Markdown.")
-    parser.add_argument(
-        "path",
-        nargs="?",
-        default=".",
-        help="Path to the directory or file (default: current directory).",
+def process_directory(
+    directory: Path,
+    gitignore_spec: PathSpec | None,
+) -> str:
+    """
+    Обрабатывает директорию, создавая текстовое представление дерева.
+    """
+    tree = build_tree(directory, directory, gitignore_spec)
+    return format_tree(tree)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Convert files or directories with modular converters and exporters."
     )
-    parser.add_argument("-o", "--output", help="Output file path.")
     parser.add_argument(
-        "-gexc",
-        "--glob-exclude",
-        nargs="*",
+        "input", type=Path, nargs="?", default="./", help="Path to file or directory"
+    )
+    parser.add_argument(
+        "-o",
+        "--output",
+        type=Path,
+        help="Optional output file to save results",
+    )
+    parser.add_argument(
+        "-c",
+        "--copy",
+        action="store_true",
+        help="Copy output to clipboard",
+    )
+    parser.add_argument(
+        "-v", "--verbose", action="store_true", help="Enable verbose logging"
+    )
+    parser.add_argument(
+        "--ignore",
+        nargs="+",
         default=[],
-        help="List of glob patterns for excluding files or directories (e.g., '*.log' '*.tmp').",
+        help="Ignore specific files (supports wildcards, e.g., '*.css' 'assets/*.html')",
     )
-    parser.add_argument(
-        "-se",
-        "--skip-empty-files",
-        action="store_true",
-        help="Skip empty files.",
-    )
-    parser.add_argument(
-        "-cp",
-        "--clipboard",
-        action="store_true",
-        help="Copy the output file content to clipboard.",
-    )
-    parser.add_argument(
-        "-igi",
-        "--ignore-gitignore",
-        action="store_true",
-        help="Ignore .gitignore and .globalignore files.",
-    )
-
     args = parser.parse_args()
-    input_path = Path(args.path)
 
+    logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO)
+
+    input_path: Path = args.input
     if not input_path.exists():
-        print(f"Error: Path not found: {input_path}")
+        logger.error("Input path '%s' not found.", input_path)
         sys.exit(1)
 
-    # Load .gitignore and .globalignore patterns unless ignored by the user
-    gitignore_spec = (
-        None if args.ignore_gitignore else load_gitignore_patterns(input_path)
+    converters_list: list[BaseConverter] = load_converters()
+    exporters_list: list[BaseExporter] = load_exporters()
+
+    if not converters_list or not exporters_list:
+        logger.error("No converters or exporters found. Exiting.")
+        sys.exit(1)
+
+    default_converter: BaseConverter | None = next(
+        (c for c in converters_list if c.__class__.__name__ == "DefaultConverter"), None
     )
 
-    import io
+    if default_converter is None:
+        from converters.default import converter as default_conv
 
-    buffer = io.StringIO()
+        default_converter = default_conv
 
-    try:
-        if input_path.is_dir():
-            write_tree_to_file(
-                input_path, buffer, gitignore_spec, args.glob_exclude
-            )
-            for file_path in input_path.rglob("*"):
-                if file_path.is_file():
-                    append_to_single_file(
-                        file_path,
-                        input_path,
-                        buffer,
-                        gitignore_spec,
-                        args.glob_exclude,
-                    )
-        elif input_path.is_file():
-            append_to_single_file(
-                input_path,
-                input_path.parent,
-                buffer,
-                gitignore_spec,
-                args.glob_exclude,
-            )
-        else:
-            print(f"Error: Unsupported path type: {input_path}")
-            sys.exit(1)
+    exporter: BaseExporter = exporters_list[0]
 
-        content = buffer.getvalue()
+    gitignore_spec = load_ignore(input_path, args.ignore)
 
-        if args.output:
-            with Path(args.output).open("w", encoding="utf-8") as out_fh:
-                out_fh.write(content)
-            print(f"Contents saved to {args.output}.")
-        elif args.clipboard:
-            copy_to_clipboard_content(content)
-            print("Contents copied to clipboard.")
-        else:
-            print(content)
+    output: str = ""
 
-    finally:
-        buffer.close()
+    if input_path.is_file():
+        conv = get_converter(input_path, converters_list, default_converter)
+        content = conv.convert(input_path)
+        language = conv.get_language(input_path)
+        output += exporter.format(input_path, content, language)
+    elif input_path.is_dir():
+        tree_output = process_directory(input_path, gitignore_spec)
+        output += f"## Tree for {input_path.name}\n```\n{tree_output}\n```\n\n"
+
+        for file_path in input_path.rglob("*"):
+            if file_path.is_file() and not should_ignore(
+                str(file_path), [], str(input_path), gitignore_spec
+            ):
+                # Скип пустых файлов
+                if file_path.stat().st_size == 0:
+                    logger.debug("Skipping empty file: %s", file_path)
+                    continue
+
+                conv = get_converter(file_path, converters_list, default_converter)
+                content = conv.convert(file_path)
+                language = conv.get_language(file_path)
+                rel_path = file_path.relative_to(input_path)
+                output += exporter.format(rel_path, content, language)
+    else:
+        logger.error("Unsupported path type.")
+        sys.exit(1)
+
+    if args.output:
+        args.output.write_text(output, encoding="utf-8")
+        logger.info("Output written to %s", args.output)
+
+    if args.copy:
+        copy_content(output)
+        logger.info("Output copied to clipboard")
 
 
 if __name__ == "__main__":

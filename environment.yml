@@ -1,0 +1,9 @@
+name: default
+
+channels:
+  - conda-forge
+
+dependencies:
+  - python>=3.10
+  - pip:
+      - pathspec=^0.12.1

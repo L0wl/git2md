@@ -202,3 +202,8 @@ pyrightconfig.json
 .nfs*
 
 # End of https://www.toptal.com/developers/gitignore/api/linux
+
+# Micromamba
+.micromamba
+
+.mdignore

@@ -2,26 +2,29 @@
 
 ![PyPI](https://img.shields.io/pypi/v/git2md)
 ![Python Version](https://img.shields.io/pypi/pyversions/git2md)
-![Build Status](https://img.shields.io/github/actions/workflow/status/xpos587/git2md/release-python.yaml?branch=main)
+![Build Status](https://img.shields.io/github/actions/workflow/status/xpos587/git2md/.github/workflows/release.yaml)
 ![License](https://img.shields.io/github/license/xpos587/git2md)
 ![AUR version](https://img.shields.io/aur/version/git2md-git)
 
-🚀 A powerful command-line tool for converting Git repository contents into Markdown format. This tool is ideal for developers and documentation specialists who need to generate structured Markdown files from Git repositories, including directory trees and file contents.
+🚀 A powerful command-line tool for converting Git repository contents into Markdown format.
+This tool is perfect for developers and documentation specialists who need to create
+structured Markdown files based on repository contents, including directory trees and file contents.
+
+Read README in Russian [here](https://github.com/Xpos587/git2md/blob/main/README_RU.md)
 
 ---
 
 ## ✨ Features
 
-- **🌳 Generate repository directory tree**: Outputs the structure of the repository in a `tree` block format.
-- **📝 Convert files to Markdown**:
+- **🌳 Repository Directory Tree Generation**: outputs repository structure in `tree` block format.
+- **📝 File to Markdown Conversion**:
   - Supports syntax highlighting for code files.
-  - Converts Jupyter Notebooks (`.ipynb`) and PDFs (`.pdf`) into Markdown.
-- **🎯 Support for `.gitignore` and `.globalignore`**:
-  - Automatically excludes files/directories listed in `.gitignore` or `.globalignore`.
-- **🔍 Custom exclusion patterns**: Use regular expressions to exclude specific files or directories.
-- **🗑️ Skip empty files**: Avoids processing files with no content.
-- **📋 Copy output to clipboard**: Easily copy the generated Markdown output for further use.
-- **⚡ Multithreading support**: Speeds up file processing for large repositories.
+  - ~~Converts Jupyter Notebook (`.ipynb`) and PDF (`.pdf`) to Markdown.~~
+- **🎯 Support for `.gitignore`, `.globalignore` and `.mdignore` for local projects**:
+  - Automatically excludes files/directories specified in `.gitignore`, `.globalignore` or `.mdignore`.
+- **🔍 Custom Exclusion Patterns**: use regular expressions to exclude specific files or directories.
+- **🗑️ Skip Empty Files**: ignores files without content.
+- **📋 Copy Results to Clipboard**: simplifies using generated Markdown.
 
 ---
 
@@ -29,41 +32,41 @@
 
 Below is a demonstration of how `git2md` works:
 
-![git2md demonstration](https://raw.githubusercontent.com/Xpos587/git2md/refs/heads/main/assets/demo.gif)
+![Demo of git2md](https://raw.githubusercontent.com/Xpos587/git2md/refs/heads/main/assets/demo.gif)
 
 ---
 
 ## 📋 Requirements
 
-- **🐍 Python 3.12 or higher**
-- **🐧 Linux operating system**
+- **🐍 Python 3.9 or newer**
+- **🐧 ~~Linux Operating System~~ Now supports Windows, MacOS, Linux (X11 and Wayland)**
 - **📦 Dependencies**:
-  - `pathspec` (for `.gitignore` support)
-  - `nbconvert` (for Jupyter Notebook conversion)
-  - `PyMuPDF4LLM` (for PDF conversion)
-  - `wl-copy` (optional, for clipboard functionality)
+  - `pathspec` (for `.gitignore`, `.mdignore`, `.globalignore` support)
+  - ~~`nbconvert` (for Jupyter Notebook conversion)~~ (support temporarily limited)
+  - ~~`PyMuPDF4LLM` (for PDF conversion)~~ (support discontinued, will be replaced with better alternatives)
+  - `wl-copy/xsel/xclip` (optional, Linux-only for clipboard functionality)
 
 ---
 
 ## 📥 Installation
 
-### 📦 Install from PyPI
+### 📦 Install via PyPI
 
-You can install `git2md` directly from PyPI using pip:
+You can install `git2md` directly through PyPI using pip:
 
 ```bash
 pip install git2md
 ```
 
-### 🏗️ Install from AUR (Arch Linux)
+### 🏗️ Install via AUR (Arch Linux)
 
-For Arch Linux users, the package is available in the AUR as `git2md-git`. You can install it using an AUR helper like `paru` or `yay`:
+For Arch Linux users, the package is available in AUR as [python-git2md](https://aur.archlinux.org/packages/python-git2md). It can be installed using AUR helpers like `paru` or `yay`:
 
 ```bash
-paru -S git2md-git
+paru -S python-git2md
 ```
 
-### 🔨 Install from source
+### 🔨 Install from Source
 
 1. Clone the repository:
 
@@ -89,45 +92,37 @@ paru -S git2md-git
 git2md [path] [options]
 ```
 
-Если путь не указан, будет использована текущая директория.
+If path is not specified, the current directory will be used.
 
 ### ⚙️ Options
 
-| Option                       | Description                                                            |
-| ---------------------------- | ---------------------------------------------------------------------- |
-| `path`                       | Path to the Git project directory or file (default: current directory) |
-| `-o`, `--output`             | Output file path for saving the generated Markdown                     |
-| `-gexc`, `--glob-exclude`    | List of glob patterns for excluding files or directories               |
-| `-se`, `--skip-empty-files`  | Skip empty files during processing                                     |
-| `-cp`, `--clipboard`         | Copy the output content to clipboard (requires `wl-copy`)              |
-| `-igi`, `--ignore-gitignore` | Ignore `.gitignore` and `.globalignore` rules                          |
+| Option           | Description                                                     |
+| ---------------- | --------------------------------------------------------------- |
+| `path`           | Path to project directory or Git file (default: current folder) |
+| `-o`, `--output` | Path to save generated Markdown                                 |
+| `-c`, `--copy`   | Copy result to clipboard                                        |
+| `--ignore`       | List of patterns to exclude files or directories                |
 
 ---
 
 ## 📝 Examples
 
-### 📂 Generate Markdown for an entire repository
+### 📂 Generate Markdown for Entire Repository
 
 ```bash
 git2md /path/to/repo -o output.md
 ```
 
-### 🔍 Exclude specific files using glob patterns
+### 🔍 Exclude Specific Files Using Patterns
 
 ```bash
-git2md -gexc "*.log" "*.tmp" -o output.md
+git2md --ignore "./assets/style-*.css" "*.log" "*.tmp" -o output.md
 ```
 
-### 🗑️ Skip empty files and copy output to clipboard
+### 🗑️ Copy Result to Clipboard
 
 ```bash
-git2md -se -cp
-```
-
-### 🚫 Ignore `.gitignore` rules
-
-```bash
-git2md -igi -o output.md
+git2md --copy
 ```
 
 ---
@@ -136,7 +131,7 @@ git2md -igi -o output.md
 
 ### 🌳 Directory Tree
 
-The directory tree is included as a code block with the language identifier `tree`. For example:
+The directory tree is included as a code block with language identifier `tree`. For example:
 
 ```tree
 src/
@@ -149,23 +144,23 @@ src/
 
 ### 📑 File Contents
 
-Each file is included with its relative path as a header, followed by its content in a code block.
+Each file is included with its relative path in the header, followed by its contents in a code block.
 
-#### 🐍 Example for a Python File (`main.py`)
+#### 🐍 Example for Python File (`main.py`)
 
 ````markdown
 # File: src/main.py
 
-```python
+```
 print("Hello, world!")
 ```
 
 # End of file: src/main.py
 ````
 
-#### 📓 Example for a Jupyter Notebook (`notebook.ipynb`)
+#### 📓 Example for Jupyter Notebook (`notebook.ipynb`)
 
-The content is converted from `.ipynb` to Markdown and included directly:
+Content is converted from `.ipynb` to Markdown and included directly:
 
 ```markdown
 # File: notebook.ipynb
@@ -175,9 +170,9 @@ The content is converted from `.ipynb` to Markdown and included directly:
 # End of file: notebook.ipynb
 ```
 
-#### 📄 Example for a PDF (`document.pdf`)
+#### 📄 Example for PDF (`document.pdf`)
 
-The content is extracted as Markdown:
+Text is extracted in Markdown format:
 
 ```markdown
 # File: document.pdf
@@ -189,11 +184,11 @@ The content is extracted as Markdown:
 
 ---
 
-## 🔧 Global Ignore Patterns
+## 🔧 Global Exclusion Patterns
 
-You can create a `.globalignore` file in the same directory as the script to specify patterns that should be ignored across all repositories. The format is identical to `.gitignore`.
+You can create a `.mdignore` file in the same directory as the script to specify patterns that should be excluded for all repositories. The format is identical to `.gitignore`.
 
-#### 📝 Example `.globalignore`
+#### 📝 Example `.mdignore`
 
 ```plaintext
 __pycache__/
@@ -212,17 +207,11 @@ To set up the development environment:
 1. Create a virtual environment:
 
    ```bash
-   python -m venv .venv
-   source .venv/bin/activate
+   micromamba create -p ./.micromamba/ -f environment.yml
+   micromamba activate -p ./.micromamba/
    ```
 
-2. Install dependencies:
-
-   ```bash
-   pip install pathspec nbconvert pymupdf4llm
-   ```
-
-3. Install in editable mode:
+2. Install the project in development mode:
 
    ```bash
    pip install -e .
@@ -232,17 +221,17 @@ To set up the development environment:
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
 ---
 
 ## 🤝 Contributing
 
 1. Fork the repository.
-2. Create your feature branch (`git checkout -b feature/amazing-feature`).
+2. Create a feature branch (`git checkout -b feature/amazing-feature`).
 3. Commit your changes (`git commit -m 'Add some amazing feature'`).
 4. Push to the branch (`git push origin feature/amazing-feature`).
-5. Open a Pull Request.
+5. Create a Pull Request.
 
 ---
 
@@ -254,6 +243,7 @@ Michael (<x30827pos@gmail.com>)
 
 ## 🙏 Acknowledgments
 
-Thanks to the developers of the `pathspec`, `nbconvert`, `nbformat`, and `PyMuPDF4LLM` libraries.
+Thanks to the developers of [repomix](https://github.com/yamadashy/repomix) and [git2txt](https://github.com/mrauter1/git2txt).
 
-Inspired by the need to easily document Git repositories for LLM-based workflows.
+The idea emerged from the need for universal and simplified repository documentation
+for LLM-based workflows.
