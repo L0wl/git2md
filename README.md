@@ -24,6 +24,7 @@ Read README in Russian [here](https://github.com/Xpos587/git2md/blob/main/README
   - Automatically excludes files/directories specified in `.gitignore`, `.globalignore` or `.mdignore`.
 - **🔍 Custom Exclusion Patterns**: use regular expressions to exclude specific files or directories.
 - **🗑️ Skip Empty Files**: ignores files without content.
+- **🔢 Hexdump for binary files up to 1MB**: small binary files are shown as a hex table.
 - **📋 Copy Results to Clipboard**: simplifies using generated Markdown.
 
 ---
