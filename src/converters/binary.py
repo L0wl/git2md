@@ -34,7 +34,7 @@ class BinaryConverter(BaseConverter):
         return "\n".join(lines)
 
     def get_language(self, file_path: Path) -> str | None:  # type: ignore[override]
-        return "hexdump"
+        return "text"
 
 
 converter = BinaryConverter()
